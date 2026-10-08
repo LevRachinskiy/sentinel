@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+*.egg-info/
+node_modules/
+frontend/dist/
+.pytest_cache/
+.ruff_cache/
+playwright-results/
+frontend/test-results/
+frontend/playwright-report/

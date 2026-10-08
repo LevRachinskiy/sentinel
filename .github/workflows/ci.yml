@@ -1,0 +1,42 @@
+name: sentinel-ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: {POSTGRES_DB: sentinel_test, POSTGRES_USER: sentinel, POSTGRES_PASSWORD: ci-only}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sentinel"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://sentinel:ci-only@localhost:5432/sentinel_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json}
+      - run: pip install -r requirements-lock.txt && pip install -e . --no-deps
+      - run: python -m ruff check backend scripts
+      - run: python -m pytest -q
+      - run: python scripts/smoke.py
+      - run: python -m sentinel.evaluate --output /tmp/replay.json
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium && npm run test:e2e
+        working-directory: frontend
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up --build -d --wait
+      - run: curl --fail http://127.0.0.1:8080/health
+      - run: docker compose logs
+        if: failure()
+      - run: docker compose down -v
+        if: always()

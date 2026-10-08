@@ -1,0 +1,31 @@
+# Apply to a disposable namespace only. The adapter can patch exactly one Deployment.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sentinel-executor
+  namespace: sentinel-lab
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: checkout-rollback
+  namespace: sentinel-lab
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["checkout"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sentinel-checkout-rollback
+  namespace: sentinel-lab
+subjects:
+  - kind: ServiceAccount
+    name: sentinel-executor
+    namespace: sentinel-lab
+roleRef:
+  kind: Role
+  name: checkout-rollback
+  apiGroup: rbac.authorization.k8s.io
